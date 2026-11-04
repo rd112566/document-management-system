@@ -15,9 +15,20 @@ export const AuthProvider = ({ children }) => {
         setUser(JSON.parse(savedUser));
       } catch (e) {
         localStorage.removeItem("dms_user");
+        setUser(null);
       }
+    } else {
+      setUser(null);
     }
     setLoading(false);
+
+    const handleAuthLogout = () => {
+      setToken(null);
+      setUser(null);
+    };
+
+    window.addEventListener("auth_logout", handleAuthLogout);
+    return () => window.removeEventListener("auth_logout", handleAuthLogout);
   }, [token]);
 
   const login = async (username, password) => {
