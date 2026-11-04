@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+PyJWT
+bcrypt
+PyMuPDF
+python-docx
+Pillow
+pytesseract
+chromadb
+requests
