@@ -1,8 +1,12 @@
 import os
+import sys
+# Ensure backend directory is in sys.path
+sys.path.insert(0, os.path.dirname(__file__))
+
 import shutil
 import uuid
 import json
-from typing import Optional
+from typing import Optional, Dict, Any
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -20,7 +24,11 @@ from rag_service import (
     index_document,
     delete_document_from_index,
     query_rag,
-    generate_summary
+    generate_summary,
+    get_azure_config,
+    update_azure_config,
+    test_azure_openai_connection,
+    collection
 )
 
 # Initialize Database
@@ -30,9 +38,9 @@ UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = FastAPI(
-    title="Document Management System with RAG",
-    description="Enterprise RAG Backend with FastAPI, SQLite, and ChromaDB",
-    version="1.0.0"
+    title="Document Management System with RAG & Azure OpenAI",
+    description="Enterprise RAG Backend with FastAPI, SQLite, ChromaDB, and Azure OpenAI GPT Models",
+    version="2.0.0"
 )
 
 # Enable CORS for React Frontend
@@ -76,11 +84,64 @@ class QuestionRequest(BaseModel):
 class RenameRequest(BaseModel):
     new_name: str
 
+class AzureConfigUpdate(BaseModel):
+    endpoint: Optional[str] = None
+    api_key: Optional[str] = None
+    deployment_name: Optional[str] = None
+    api_version: Optional[str] = None
+    embedding_deployment: Optional[str] = None
+
+class AzureTestRequest(BaseModel):
+    endpoint: Optional[str] = None
+    api_key: Optional[str] = None
+    deployment_name: Optional[str] = None
+    api_version: Optional[str] = None
+
+# ----------------- AZURE OPENAI CONFIG ENDPOINTS -----------------
+@app.get("/api/azure/config")
+def get_azure_settings(current_user: dict = Depends(get_current_user)):
+    """
+    Returns the current Azure OpenAI configuration with the API key safely masked.
+    """
+    return get_azure_config()
+
+@app.post("/api/azure/config")
+def set_azure_settings(
+    settings: AzureConfigUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Updates the Azure OpenAI configuration dynamically and persists to .env.
+    """
+    updated = update_azure_config(
+        endpoint=settings.endpoint,
+        api_key=settings.api_key,
+        deployment_name=settings.deployment_name,
+        api_version=settings.api_version,
+        embedding_deployment=settings.embedding_deployment
+    )
+    return {"message": "Azure OpenAI configuration updated successfully", "config": updated}
+
+@app.post("/api/azure/test-connection")
+def test_azure_connection(
+    req: AzureTestRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Performs a live test call to the specified Azure OpenAI deployment.
+    """
+    result = test_azure_openai_connection(
+        endpoint=req.endpoint,
+        api_key=req.api_key,
+        deployment_name=req.deployment_name,
+        api_version=req.api_version
+    )
+    return result
+
 # ----------------- AUTH ENDPOINTS -----------------
 @app.post("/api/auth/signup", status_code=status.HTTP_201_CREATED)
 def signup(user: UserRegister):
     conn = get_db_connection()
-    # Check if username or email exists
     existing = conn.execute(
         "SELECT id FROM users WHERE username = ? OR email = ?",
         (user.username, user.email)
@@ -121,7 +182,7 @@ def login(creds: UserLogin):
     if not user or not verify_password(creds.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password. If you haven't created an account on the live app yet, please click 'Sign Up' first!"
+            detail="Incorrect username or password. Please check your credentials or click 'Sign Up' first!"
         )
 
     token = create_access_token({"sub": user["id"], "username": user["username"]})
@@ -136,6 +197,8 @@ def get_me(current_user: dict = Depends(get_current_user)):
     return {"user": current_user}
 
 # ----------------- DOCUMENT ENDPOINTS -----------------
+SUPPORTED_EXTENSIONS = {"pdf", "docx", "doc", "txt", "md", "markdown", "csv", "tsv", "xlsx", "xls", "json"}
+
 @app.post("/api/documents/upload")
 async def upload_document(
     background_tasks: BackgroundTasks,
@@ -143,10 +206,10 @@ async def upload_document(
     current_user: dict = Depends(get_current_user)
 ):
     ext = file.filename.split(".")[-1].lower() if "." in file.filename else ""
-    if ext not in ["pdf", "docx", "doc", "txt"]:
+    if ext not in SUPPORTED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported format. Only PDF, DOCX, and TXT are supported."
+            detail=f"Unsupported format '{ext}'. Supported formats: PDF, DOCX, TXT, MD, CSV, XLSX, JSON."
         )
 
     user_dir = os.path.join(UPLOAD_DIR, str(current_user["id"]))
@@ -160,7 +223,7 @@ async def upload_document(
 
     file_size = os.path.getsize(file_path)
 
-    # Fast text extraction with PyMuPDF
+    # Document text extraction
     try:
         pages_data = extract_document_text(file_path, ext)
         page_count = len(pages_data)
@@ -183,20 +246,17 @@ async def upload_document(
     conn.commit()
     conn.close()
 
-    # Index in ChromaDB in background to prevent cloud proxy timeouts
-    def do_index():
-        try:
-            c_count = index_document(
-                user_id=current_user["id"],
-                doc_id=doc_id,
-                filename=file.filename,
-                pages_data=pages_data
-            )
-            print(f"[Upload] Indexed {c_count} chunks for doc {doc_id} in background.")
-        except Exception as err:
-            print(f"[Upload Error] Background indexing failed: {err}")
-
-    background_tasks.add_task(do_index)
+    # Index in ChromaDB
+    try:
+        chunks_count = index_document(
+            user_id=current_user["id"],
+            doc_id=doc_id,
+            filename=file.filename,
+            pages_data=pages_data
+        )
+    except Exception as err:
+        print(f"[Upload Error] Indexing failed: {err}")
+        chunks_count = page_count
 
     return {
         "id": doc_id,
@@ -204,8 +264,8 @@ async def upload_document(
         "file_type": ext,
         "file_size": file_size,
         "page_count": page_count,
-        "chunks_indexed": page_count,
-        "message": f"Successfully uploaded and indexed '{file.filename}'!"
+        "chunks_indexed": chunks_count,
+        "message": f"Successfully uploaded and indexed '{file.filename}' ({chunks_count} chunks indexed)!"
     }
 
 @app.get("/api/documents")
@@ -219,6 +279,52 @@ def list_documents(current_user: dict = Depends(get_current_user)):
     """, (current_user["id"],)).fetchall()
     conn.close()
     return [dict(d) for d in docs]
+
+@app.get("/api/documents/{doc_id}/chunks")
+def get_document_chunks(
+    doc_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Returns the extracted chunks and page data for a specific document.
+    """
+    conn = get_db_connection()
+    doc = conn.execute(
+        "SELECT id, original_name, page_count, file_type FROM documents WHERE id = ? AND user_id = ?",
+        (doc_id, current_user["id"])
+    ).fetchone()
+    conn.close()
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    results = collection.get(
+        where={
+            "$and": [
+                {"user_id": current_user["id"]},
+                {"document_id": doc_id}
+            ]
+        }
+    )
+
+    chunks = []
+    docs = results.get("documents", [])
+    metas = results.get("metadatas", [])
+    for d, m in zip(docs, metas):
+        chunks.append({
+            "text": d,
+            "page": m.get("page", 1),
+            "chunk_index": m.get("chunk_index", 0)
+        })
+
+    chunks.sort(key=lambda x: (x["page"], x["chunk_index"]))
+
+    return {
+        "document_id": doc_id,
+        "document_name": doc["original_name"],
+        "total_chunks": len(chunks),
+        "chunks": chunks
+    }
 
 @app.put("/api/documents/{doc_id}/rename")
 def rename_document(
@@ -317,15 +423,32 @@ def ask_question(
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
+    conn = get_db_connection()
+
+    # Fetch recent conversation turns for multi-turn conversational awareness
+    if req.document_id:
+        prev_rows = conn.execute("""
+            SELECT question, answer FROM chat_history
+            WHERE user_id = ? AND document_id = ?
+            ORDER BY created_at DESC LIMIT 3
+        """, (current_user["id"], req.document_id)).fetchall()
+    else:
+        prev_rows = conn.execute("""
+            SELECT question, answer FROM chat_history
+            WHERE user_id = ?
+            ORDER BY created_at DESC LIMIT 3
+        """, (current_user["id"],)).fetchall()
+    recent_history = [dict(r) for r in reversed(prev_rows)]
+
     # Query RAG
     rag_result = query_rag(
         user_id=current_user["id"],
         question=req.question,
-        document_id=req.document_id
+        document_id=req.document_id,
+        chat_history=recent_history
     )
 
     # Save to Chat History
-    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO chat_history (user_id, document_id, question, answer, citations)
@@ -346,7 +469,7 @@ def ask_question(
         "question": req.question,
         "answer": rag_result["answer"],
         "citations": rag_result["citations"],
-        "model_used": rag_result.get("model_used", "gpt-5.6-luna (Azure OpenAI)"),
+        "model_used": rag_result.get("model_used", "Azure OpenAI"),
         "document_id": req.document_id
     }
 
@@ -398,13 +521,20 @@ def clear_chat_history(
 
 @app.get("/")
 def health_check():
+    cfg = get_azure_config()
     return {
         "status": "online",
-        "service": "Document Management System with RAG",
+        "service": "Document Management System with RAG & Azure OpenAI",
+        "azure_openai": {
+            "is_configured": cfg["is_configured"],
+            "deployment": cfg["deployment_name"],
+            "endpoint": cfg["endpoint"]
+        },
         "endpoints": {
             "docs": "/docs",
             "auth": "/api/auth",
             "documents": "/api/documents",
-            "chat": "/api/chat"
+            "chat": "/api/chat",
+            "azure_config": "/api/azure/config"
         }
     }
