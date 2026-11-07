@@ -1,15 +1,12 @@
 fastapi
 uvicorn[standard]
-gunicorn
 python-multipart
 PyJWT
 bcrypt
 PyMuPDF
-pymupdf4llm
 python-docx
 Pillow
 pytesseract
-rapidocr-onnxruntime
 chromadb
 requests
 python-dotenv

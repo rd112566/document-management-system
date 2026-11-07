@@ -3,21 +3,15 @@ import re
 import io
 from PIL import Image
 
-# Import PyMuPDF and PyMuPDF4LLM for high-accuracy document parsing
+# High-performance PyMuPDF
 try:
     import pymupdf as fitz
 except ImportError:
     import fitz
 
-try:
-    import pymupdf4llm
-    HAS_PYMUPDF4LLM = True
-except ImportError:
-    HAS_PYMUPDF4LLM = False
-
 from docx import Document
 
-# Optional Tesseract or RapidOCR
+# Optional OCR fallback for genuinely scanned image-only PDFs
 try:
     import pytesseract
     OCR_AVAILABLE = True
@@ -33,13 +27,15 @@ except Exception:
 
 def clean_extracted_text(text: str) -> str:
     """
-    Cleans raw text by removing null bytes, fixing hyphenated word-breaks across lines,
-    and normalizing whitespace while preserving readable structure.
+    Cleans raw text by removing null bytes, fixing private-use font characters (bullets),
+    and de-hyphenating words across line-breaks.
     """
     if not text:
         return ""
-    # Remove null characters
+    # Replace null bytes
     text = text.replace('\x00', ' ')
+    # Replace private use area characters (common in PDFs for bullet points)
+    text = re.sub(r'[\ue000-\uf8ff]', '• ', text)
     # Fix hyphenated words at line-breaks (e.g. "instruc-\ntion" -> "instruction")
     text = re.sub(r'(\w+)-\s*\n\s*(\w+)', r'\1\2', text)
     # Normalize excessive blank lines
@@ -48,58 +44,28 @@ def clean_extracted_text(text: str) -> str:
 
 def extract_text_from_pdf(file_path: str):
     """
-    Extracts text page by page with high accuracy.
-    Uses PyMuPDF4LLM (Markdown structuring) with RapidOCR/Tesseract fallback for scanned documents.
+    High-speed, memory-efficient PDF text extraction using PyMuPDF.
+    Extracts pages in milliseconds and falls back to OCR only for scanned/image-only pages.
     """
     pages_data = []
-
-    # First attempt: Try PyMuPDF4LLM for rich structured text (tables, headings, lists)
-    if HAS_PYMUPDF4LLM:
-        try:
-            chunks = pymupdf4llm.to_markdown(file_path, page_chunks=True)
-            for idx, c in enumerate(chunks):
-                raw_text = c.get("text", "")
-                cleaned = clean_extracted_text(raw_text)
-                
-                # Check if page is empty or image-based
-                if len(cleaned) < 25 and HAS_RAPID_OCR:
-                    try:
-                        doc = fitz.open(file_path)
-                        pix = doc[idx].get_pixmap()
-                        img_bytes = pix.tobytes("png")
-                        ocr_result, _ = rapid_ocr(img_bytes)
-                        if ocr_result:
-                            ocr_lines = [line[1] for line in ocr_result if line[1]]
-                            cleaned = f"[Scanned Page - OCR Extracted]\n" + "\n".join(ocr_lines)
-                        doc.close()
-                    except Exception:
-                        pass
-
-                pages_data.append({
-                    "page": idx + 1,
-                    "text": cleaned if cleaned else "[No text or image content detected on this page]"
-                })
-            if pages_data:
-                return pages_data
-        except Exception as e:
-            print(f"PyMuPDF4LLM parsing failed: {e}. Falling back to standard PyMuPDF.")
-
-    # Fallback attempt: Standard PyMuPDF
     doc = fitz.open(file_path)
+
     for page_num in range(len(doc)):
         page = doc[page_num]
-        text = clean_extracted_text(page.get_text("text"))
+        raw_text = page.get_text("text")
+        cleaned = clean_extracted_text(raw_text)
 
-        # OCR fallback if page has negligible text
-        if len(text) < 25:
-            pix = page.get_pixmap()
+        # Fallback to OCR ONLY if page is truly image-based or blank (< 25 characters)
+        if len(cleaned) < 25:
+            pix = page.get_pixmap(dpi=150)
             img_bytes = pix.tobytes("png")
+
             if HAS_RAPID_OCR:
                 try:
                     ocr_result, _ = rapid_ocr(img_bytes)
                     if ocr_result:
                         ocr_lines = [line[1] for line in ocr_result if line[1]]
-                        text = f"[Scanned Page - OCR Extracted]\n" + "\n".join(ocr_lines)
+                        cleaned = "[Scanned Page - OCR]\n" + "\n".join(ocr_lines)
                 except Exception:
                     pass
             elif OCR_AVAILABLE:
@@ -107,13 +73,13 @@ def extract_text_from_pdf(file_path: str):
                     img = Image.open(io.BytesIO(img_bytes))
                     ocr_text = pytesseract.image_to_string(img).strip()
                     if ocr_text:
-                        text = f"[OCR Extracted]\n{ocr_text}"
+                        cleaned = f"[OCR Extracted]\n{ocr_text}"
                 except Exception:
                     pass
 
         pages_data.append({
             "page": page_num + 1,
-            "text": text if text else "[Empty or image-only page]"
+            "text": cleaned if cleaned else "[No text content detected on this page]"
         })
 
     doc.close()
