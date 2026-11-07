@@ -1,6 +1,9 @@
 import os
+import json
+import csv
 import pymupdf as fitz
 from docx import Document
+import openpyxl
 
 samples_dir = os.path.join(os.path.dirname(__file__), "..", "samples")
 os.makedirs(samples_dir, exist_ok=True)
@@ -40,9 +43,44 @@ docx_doc = Document()
 docx_doc.add_heading("Document Management System - Project Specifications", 0)
 docx_doc.add_paragraph("Deadline: November 2026. Budget: Open-Source.")
 docx_doc.add_heading("Key Deliverables", level=1)
-docx_doc.add_paragraph("1. Fast text extraction supporting PDF, DOCX, and TXT.")
+docx_doc.add_paragraph("1. Fast text extraction supporting PDF, DOCX, TXT, Excel, CSV, and JSON.")
 docx_doc.add_paragraph("2. Chunking with ChromaDB vector store embeddings.")
-docx_doc.add_paragraph("3. Multi-turn QA with page-level citations.")
+docx_doc.add_paragraph("3. Multi-turn QA with page-level citations powered by Azure OpenAI GPT models.")
 docx_doc.save(docx_path)
 
-print("Generated sample documents successfully in 'samples/' folder!")
+# 4. Create Sample CSV
+csv_path = os.path.join(samples_dir, "quarterly_financials.csv")
+with open(csv_path, "w", newline="", encoding="utf-8") as f:
+    writer = csv.writer(f)
+    writer.writerow(["Quarter", "Revenue (USD)", "Net Profit (USD)", "Growth Rate", "Key Product"])
+    writer.writerow(["Q1 2026", "$1,250,000", "$320,000", "+14.2%", "DocuMind Cloud"])
+    writer.writerow(["Q2 2026", "$1,480,000", "$410,000", "+18.4%", "Azure RAG Suite"])
+    writer.writerow(["Q3 2026", "$1,820,000", "$560,000", "+22.9%", "Enterprise Search"])
+
+# 5. Create Sample Excel XLSX
+xlsx_path = os.path.join(samples_dir, "cloud_infrastructure_inventory.xlsx")
+wb = openpyxl.Workbook()
+ws = wb.active
+ws.title = "Cloud Resources"
+ws.append(["Resource ID", "Service Type", "Region", "Monthly Cost (USD)", "Deployment Tier"])
+ws.append(["vm-ai-rag-01", "Azure OpenAI Service", "East US", "$850", "gpt-5.6-luna"])
+ws.append(["vm-vec-db-01", "ChromaDB Persistent Cluster", "East US 2", "$340", "Standard"])
+ws.append(["app-gateway-01", "FastAPI Application Host", "Central US", "$220", "High Availability"])
+wb.save(xlsx_path)
+
+# 6. Create Sample JSON
+json_path = os.path.join(samples_dir, "compliance_standards.json")
+compliance_data = {
+    "organization": "DocuMind Enterprise",
+    "version": "2026.1",
+    "compliance_frameworks": [
+        {"name": "SOC2 Type II", "status": "Certified", "audit_date": "2026-03-15"},
+        {"name": "ISO 27001", "status": "Certified", "audit_date": "2026-06-20"},
+        {"name": "GDPR Compliance", "status": "Enforced", "dpo_contact": "privacy@documind.io"}
+    ],
+    "retention_policy_days": 365
+}
+with open(json_path, "w", encoding="utf-8") as f:
+    json.dump(compliance_data, f, indent=2)
+
+print("Generated sample documents successfully in 'samples/' folder across PDF, DOCX, TXT, CSV, XLSX, and JSON!")

@@ -1,0 +1,22 @@
+{
+  "organization": "DocuMind Enterprise",
+  "version": "2026.1",
+  "compliance_frameworks": [
+    {
+      "name": "SOC2 Type II",
+      "status": "Certified",
+      "audit_date": "2026-03-15"
+    },
+    {
+      "name": "ISO 27001",
+      "status": "Certified",
+      "audit_date": "2026-06-20"
+    },
+    {
+      "name": "GDPR Compliance",
+      "status": "Enforced",
+      "dpo_contact": "privacy@documind.io"
+    }
+  ],
+  "retention_policy_days": 365
+}
