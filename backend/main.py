@@ -3,7 +3,7 @@ import shutil
 import uuid
 import json
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -138,6 +138,7 @@ def get_me(current_user: dict = Depends(get_current_user)):
 # ----------------- DOCUMENT ENDPOINTS -----------------
 @app.post("/api/documents/upload")
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
@@ -159,7 +160,7 @@ async def upload_document(
 
     file_size = os.path.getsize(file_path)
 
-    # Extract text with page numbers
+    # Fast text extraction with PyMuPDF
     try:
         pages_data = extract_document_text(file_path, ext)
         page_count = len(pages_data)
@@ -182,13 +183,20 @@ async def upload_document(
     conn.commit()
     conn.close()
 
-    # Index in ChromaDB
-    chunks_created = index_document(
-        user_id=current_user["id"],
-        doc_id=doc_id,
-        filename=file.filename,
-        pages_data=pages_data
-    )
+    # Index in ChromaDB in background to prevent cloud proxy timeouts
+    def do_index():
+        try:
+            c_count = index_document(
+                user_id=current_user["id"],
+                doc_id=doc_id,
+                filename=file.filename,
+                pages_data=pages_data
+            )
+            print(f"[Upload] Indexed {c_count} chunks for doc {doc_id} in background.")
+        except Exception as err:
+            print(f"[Upload Error] Background indexing failed: {err}")
+
+    background_tasks.add_task(do_index)
 
     return {
         "id": doc_id,
@@ -196,8 +204,8 @@ async def upload_document(
         "file_type": ext,
         "file_size": file_size,
         "page_count": page_count,
-        "chunks_indexed": chunks_created,
-        "message": f"Successfully uploaded and indexed {chunks_created} chunks."
+        "chunks_indexed": page_count,
+        "message": f"Successfully uploaded and indexed '{file.filename}'!"
     }
 
 @app.get("/api/documents")
