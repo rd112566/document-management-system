@@ -719,6 +719,9 @@ body {
   border: 1px solid var(--primary);
   border-radius: 6px;
   font-size: 0.9rem;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
 .rename-inline button {
