@@ -14,7 +14,113 @@ import {
   Copy,
   Check,
   Zap,
+  Download,
 } from "lucide-react";
+
+// Safe, zero-dependency Markdown formatter for grounded AI answers
+function FormattedAnswer({ text }) {
+  if (!text) return null;
+
+  const lines = text.split("\n");
+  const elements = [];
+  let inCodeBlock = false;
+  let codeBlockLines = [];
+
+  const parseInline = (line, lineIdx) => {
+    // Highlight [Document: ..., Page ...]
+    const parts = line.split(/(\[Document:[^\]]+\]|\*\*.*?\*\*|`.*?`)/g);
+
+    return parts.map((part, pIdx) => {
+      if (!part) return null;
+      if (part.startsWith("[Document:") && part.endsWith("]")) {
+        return (
+          <span key={`${lineIdx}-${pIdx}`} className="inline-source-badge">
+            {part}
+          </span>
+        );
+      }
+      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+        return (
+          <strong key={`${lineIdx}-${pIdx}`}>
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+        return (
+          <code key={`${lineIdx}-${pIdx}`} className="inline-code">
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      return part;
+    });
+  };
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+
+    // Code block detection
+    if (trimmed.startsWith("```")) {
+      if (inCodeBlock) {
+        elements.push(
+          <pre key={`code-${idx}`} className="chat-code-block">
+            <code>{codeBlockLines.join("\n")}</code>
+          </pre>
+        );
+        codeBlockLines = [];
+        inCodeBlock = false;
+      } else {
+        inCodeBlock = true;
+      }
+      return;
+    }
+
+    if (inCodeBlock) {
+      codeBlockLines.push(line);
+      return;
+    }
+
+    if (trimmed.startsWith("### ")) {
+      elements.push(
+        <h4 key={idx} className="answer-h4">
+          {parseInline(trimmed.slice(4), idx)}
+        </h4>
+      );
+    } else if (trimmed.startsWith("## ")) {
+      elements.push(
+        <h3 key={idx} className="answer-h3">
+          {parseInline(trimmed.slice(3), idx)}
+        </h3>
+      );
+    } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      elements.push(
+        <div key={idx} className="answer-bullet">
+          <span className="bullet-dot">•</span>
+          <span>{parseInline(trimmed.slice(2), idx)}</span>
+        </div>
+      );
+    } else if (/^\d+\.\s/.test(trimmed)) {
+      const match = trimmed.match(/^(\d+)\.\s(.*)$/);
+      elements.push(
+        <div key={idx} className="answer-bullet">
+          <span className="bullet-num">{match[1]}.</span>
+          <span>{parseInline(match[2], idx)}</span>
+        </div>
+      );
+    } else if (trimmed === "") {
+      elements.push(<div key={idx} className="answer-spacer" />);
+    } else {
+      elements.push(
+        <p key={idx} className="answer-para">
+          {parseInline(line, idx)}
+        </p>
+      );
+    }
+  });
+
+  return <div className="formatted-answer-body">{elements}</div>;
+}
 
 export default function ChatInterface({
   documents,
@@ -60,6 +166,34 @@ export default function ChatInterface({
         alert("Failed to clear chat history");
       }
     }
+  };
+
+  const exportConversation = () => {
+    if (messages.length === 0) return;
+    let md = `# DocuMind RAG Conversation Export\n`;
+    md += `Query Scope: ${selectedDocId ? "Document #" + selectedDocId : "All Documents"}\n`;
+    md += `Generated: ${new Date().toLocaleString()}\n\n---\n\n`;
+
+    messages.forEach((m, idx) => {
+      md += `### Q${idx + 1}: ${m.question}\n\n`;
+      md += `**Answer (${m.model_used || "Azure OpenAI"}):**\n\n${m.answer || ""}\n\n`;
+      if (m.citations && m.citations.length > 0) {
+        md += `**Sources & Citations:**\n`;
+        m.citations.forEach((c) => {
+          md += `- [${c.document_name}, Page ${c.page}]: "${c.snippet || ""}"\n`;
+        });
+        md += `\n`;
+      }
+      md += `---\n\n`;
+    });
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `documind_chat_${Date.now()}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleSend = async (e) => {
@@ -189,12 +323,24 @@ export default function ChatInterface({
           </select>
         </div>
 
-        {messages.length > 0 && (
-          <button className="clear-btn" onClick={clearHistory} title="Clear history">
-            <Trash2 size={16} />
-            <span>Clear History</span>
-          </button>
-        )}
+        <div className="chat-header-actions">
+          {messages.length > 0 && (
+            <>
+              <button
+                className="export-btn"
+                onClick={exportConversation}
+                title="Export conversation as Markdown"
+              >
+                <Download size={15} />
+                <span>Export Chat</span>
+              </button>
+              <button className="clear-btn" onClick={clearHistory} title="Clear history">
+                <Trash2 size={15} />
+                <span>Clear History</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Messages Thread */}
@@ -251,7 +397,7 @@ export default function ChatInterface({
                       <div className="bot-msg-meta">
                         <span className="model-tag">
                           <Zap size={13} style={{ marginRight: 4 }} />
-                          {msg.model_used || "gpt-4o (Azure OpenAI)"}
+                          {msg.model_used || "gpt-5.6-luna (Azure OpenAI)"}
                         </span>
                         <button
                           className="copy-btn"
@@ -273,7 +419,7 @@ export default function ChatInterface({
                       </div>
 
                       <div className="answer-text">
-                        <p style={{ whiteSpace: "pre-wrap" }}>{msg.answer}</p>
+                        <FormattedAnswer text={msg.answer} />
                       </div>
 
                       {/* Citations Box */}

@@ -201,6 +201,12 @@ body {
   background: #f0fdf4;
 }
 
+.dropzone.dragging {
+  border-color: #6366f1;
+  background: #eef2ff;
+  transform: scale(1.01);
+}
+
 .upload-icon {
   color: var(--primary);
   margin-bottom: 10px;
@@ -748,6 +754,32 @@ body {
   font-weight: 500;
   background: #f8fafc;
   color: var(--text-main);
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  color: var(--primary);
+  border-color: #a5b4fc;
+  background: #eff6ff;
 }
 
 .clear-btn {
@@ -1774,5 +1806,95 @@ body {
 .copy-btn:hover {
   background: #f1f5f9;
   color: var(--text-main);
+}
+
+/* ---------------- FORMATTED MARKDOWN ANSWER ---------------- */
+.formatted-answer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.6;
+  color: #1e293b;
+}
+
+.answer-h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.answer-h4 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+
+.answer-para {
+  margin: 0;
+  font-size: 0.94rem;
+}
+
+.answer-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.93rem;
+  padding-left: 4px;
+}
+
+.bullet-dot {
+  color: #6366f1;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.bullet-num {
+  color: #6366f1;
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  min-width: 18px;
+}
+
+.answer-spacer {
+  height: 4px;
+}
+
+.inline-source-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 4px;
+  margin: 0 4px;
+  vertical-align: middle;
+}
+
+.inline-code {
+  background: #f1f5f9;
+  color: #e11d48;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.84rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.chat-code-block {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.84rem;
+  margin: 6px 0;
 }
 

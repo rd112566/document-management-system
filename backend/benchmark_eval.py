@@ -239,3 +239,4 @@ def run_benchmark(user_id: int = 1):
 if __name__ == "__main__":
     init_db()
     run_benchmark(user_id=1)
+

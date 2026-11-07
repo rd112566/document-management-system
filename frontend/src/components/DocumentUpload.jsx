@@ -14,24 +14,47 @@ const SUPPORTED_EXTS = ["pdf", "docx", "doc", "txt", "md", "markdown", "csv", "t
 
 export default function DocumentUpload({ onUploadSuccess }) {
   const [file, setFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
+  const validateAndSetFile = (selected) => {
+    if (!selected) return;
+    const ext = selected.name.split(".").pop().toLowerCase();
+    if (!SUPPORTED_EXTS.includes(ext)) {
+      setStatusMsg({
+        type: "error",
+        text: `Unsupported format ('.${ext}'). Please upload PDF, Word (DOCX), Text, Markdown, Excel, CSV, or JSON documents.`,
+      });
+      setFile(null);
+      return;
+    }
+    setFile(selected);
+    setStatusMsg({ type: "", text: "" });
+  };
+
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      const selected = e.target.files[0];
-      const ext = selected.name.split(".").pop().toLowerCase();
-      if (!SUPPORTED_EXTS.includes(ext)) {
-        setStatusMsg({
-          type: "error",
-          text: `Unsupported format ('.${ext}'). Please upload PDF, Word (DOCX), Text, Markdown, Excel, CSV, or JSON documents.`,
-        });
-        setFile(null);
-        return;
-      }
-      setFile(selected);
-      setStatusMsg({ type: "", text: "" });
+      validateAndSetFile(e.target.files[0]);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      validateAndSetFile(e.dataTransfer.files[0]);
     }
   };
 
@@ -101,8 +124,11 @@ export default function DocumentUpload({ onUploadSuccess }) {
       </div>
 
       <div
-        className={`dropzone ${file ? "has-file" : ""}`}
+        className={`dropzone ${file ? "has-file" : ""} ${isDragging ? "dragging" : ""}`}
         onClick={() => document.getElementById("file-input").click()}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <input
           id="file-input"
@@ -123,7 +149,9 @@ export default function DocumentUpload({ onUploadSuccess }) {
         ) : (
           <div className="dropzone-content">
             <UploadCloud size={44} className="upload-icon" />
-            <p className="primary-text">Click or drag &amp; drop to upload a document</p>
+            <p className="primary-text">
+              {isDragging ? "Drop your file here!" : "Click or drag & drop to upload a document"}
+            </p>
             <p className="sub-text">
               Supports <strong>PDF, Word (DOCX), Text, Markdown, Excel, CSV, JSON</strong> (up to 50MB)
             </p>
