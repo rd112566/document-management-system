@@ -54,7 +54,11 @@ export default function DocumentUpload({ onUploadSuccess }) {
       setFile(null);
       if (onUploadSuccess) onUploadSuccess();
     } catch (err) {
-      const detail = err.response?.data?.detail || "Upload failed. Please try again.";
+      const detail =
+        err.response?.data?.detail ||
+        (err.response?.status === 401
+          ? "You are not logged in on the live site. Please sign up or log in first."
+          : "Upload failed. The server might be waking up; please try again in a few seconds.");
       setStatusMsg({ type: "error", text: detail });
     } finally {
       setUploading(false);

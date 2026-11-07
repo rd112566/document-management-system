@@ -41,15 +41,22 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://document-management-system-six-gamma.vercel.app",
 ]
+
+# Allow custom frontend URL from env if provided
+frontend_env = os.getenv("FRONTEND_URL")
+if frontend_env:
+    origins.append(frontend_env.rstrip("/"))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https?://.*",
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ----------------- PYDANTIC SCHEMAS -----------------
@@ -114,7 +121,7 @@ def login(creds: UserLogin):
     if not user or not verify_password(creds.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
+            detail="Incorrect username or password. If you haven't created an account on the live app yet, please click 'Sign Up' first!"
         )
 
     token = create_access_token({"sub": user["id"], "username": user["username"]})
