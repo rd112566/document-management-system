@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from database import init_db, get_db_connection
 from auth import (
