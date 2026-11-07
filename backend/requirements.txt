@@ -6,8 +6,10 @@ PyJWT
 bcrypt
 PyMuPDF
 python-docx
+openpyxl
 Pillow
 pytesseract
 chromadb
 requests
 python-dotenv
+openai
