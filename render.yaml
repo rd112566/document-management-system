@@ -5,16 +5,20 @@ services:
     region: oregon
     plan: free
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install --no-cache-dir -r requirements.txt
+    startCommand: sh -c "uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000}"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: JWT_SECRET
         generateValue: true
       - key: AZURE_OPENAI_ENDPOINT
-        sync: false
-      - key: AZURE_OPENAI_API_KEY
-        sync: false
+        value: https://rag-42.openai.azure.com/openai/v1
+      - key: AZURE_OPENAI_DEPLOYMENT_NAME
+        value: gpt-5.6-luna
       - key: AZURE_OPENAI_MODEL
         value: gpt-5.6-luna
+      - key: AZURE_OPENAI_API_VERSION
+        value: 2024-08-01-preview
+      - key: AZURE_OPENAI_API_KEY
+        sync: false

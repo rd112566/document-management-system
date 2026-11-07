@@ -10,6 +10,7 @@ openpyxl
 Pillow
 pytesseract
 chromadb
+pysqlite3-binary; sys_platform == 'linux'
 requests
 python-dotenv
 openai

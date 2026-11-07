@@ -1,4 +1,13 @@
 import os
+import sys
+
+# Linux cloud deployment compatibility for ChromaDB (Render, AWS, Debian/Ubuntu)
+try:
+    __import__('pysqlite3')
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+except ImportError:
+    pass
+
 import re
 import math
 import time
