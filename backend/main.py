@@ -331,6 +331,7 @@ def ask_question(
         "question": req.question,
         "answer": rag_result["answer"],
         "citations": rag_result["citations"],
+        "model_used": rag_result.get("model_used", "gpt-5.6-luna (Azure OpenAI)"),
         "document_id": req.document_id
     }
 

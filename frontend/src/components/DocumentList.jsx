@@ -52,7 +52,8 @@ export default function DocumentList({
   };
 
   const handleDownload = (id) => {
-    window.open(`http://127.0.0.1:8000/api/documents/${id}/download`, "_blank");
+    const baseUrl = api.defaults.baseURL || "http://127.0.0.1:8000";
+    window.open(`${baseUrl}/api/documents/${id}/download`, "_blank");
   };
 
   const handleGenerateSummary = async (id, name) => {

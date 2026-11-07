@@ -731,6 +731,25 @@ body {
 }
 
 /* ---------------- CITATIONS BOX ---------------- */
+.bot-msg-meta {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.model-tag {
+  background: linear-gradient(135deg, #e0e7ff, #ede9fe);
+  color: #4338ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid #c7d2fe;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .citations-box {
   margin-top: 12px;
   padding-top: 10px;

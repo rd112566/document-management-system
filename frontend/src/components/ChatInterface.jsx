@@ -202,6 +202,9 @@ export default function ChatInterface({
                     </div>
                   ) : (
                     <>
+                      <div className="bot-msg-meta">
+                        <span className="model-tag">⚡ {msg.model_used || "gpt-5.6-luna (Azure OpenAI)"}</span>
+                      </div>
                       <p className="answer-text">{msg.answer}</p>
 
                       {/* Citations Box */}
