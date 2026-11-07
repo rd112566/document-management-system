@@ -13,6 +13,10 @@ import {
   Calendar,
   Eye,
   Loader2,
+  Search,
+  Zap,
+  HardDrive,
+  Database,
 } from "lucide-react";
 
 export default function DocumentList({
@@ -23,7 +27,9 @@ export default function DocumentList({
 }) {
   const [editingId, setEditingId] = useState(null);
   const [newName, setNewName] = useState("");
-  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("all");
+
   // Summary modal state
   const [summaryData, setSummaryData] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -95,28 +101,148 @@ export default function DocumentList({
     }
   };
 
+  // Filter & Search
+  const filteredDocs = documents.filter((d) => {
+    const matchesSearch = d.original_name.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
+    if (filterType === "all") return true;
+    const ext = d.file_type?.toLowerCase();
+    if (filterType === "pdf") return ext === "pdf";
+    if (filterType === "word") return ["docx", "doc"].includes(ext);
+    if (filterType === "spreadsheet") return ["xlsx", "xls", "csv", "tsv"].includes(ext);
+    if (filterType === "code") return ["json", "txt", "md", "markdown"].includes(ext);
+    return true;
+  });
+
+  const totalPages = documents.reduce((sum, d) => sum + (d.page_count || 1), 0);
+  const totalSizeKB = documents.reduce((sum, d) => sum + (d.file_size || 0), 0) / 1024;
+
   return (
     <div className="doc-list-container">
+      {/* Knowledge Base Metrics Bar */}
+      <div className="metrics-summary-bar">
+        <div className="metric-summary-card">
+          <div className="metric-icon-box bg-indigo">
+            <HardDrive size={18} />
+          </div>
+          <div className="metric-details">
+            <span className="metric-number">{documents.length}</span>
+            <span className="metric-label">Documents Stored</span>
+          </div>
+        </div>
+
+        <div className="metric-summary-card">
+          <div className="metric-icon-box bg-purple">
+            <Layers size={18} />
+          </div>
+          <div className="metric-details">
+            <span className="metric-number">{totalPages}</span>
+            <span className="metric-label">Pages Extracted</span>
+          </div>
+        </div>
+
+        <div className="metric-summary-card">
+          <div className="metric-icon-box bg-emerald">
+            <Database size={18} />
+          </div>
+          <div className="metric-details">
+            <span className="metric-number">{totalSizeKB.toFixed(1)} KB</span>
+            <span className="metric-label">Storage Footprint</span>
+          </div>
+        </div>
+
+        <div className="metric-summary-card">
+          <div className="metric-icon-box bg-blue">
+            <Zap size={18} />
+          </div>
+          <div className="metric-details">
+            <span className="metric-number">gpt-5.6-luna</span>
+            <span className="metric-label">Azure OpenAI Engine</span>
+          </div>
+        </div>
+      </div>
+
       <div className="doc-list-header">
         <div>
-          <h3>My Knowledge Base</h3>
+          <h3>Document Repository</h3>
           <p>
-            {documents.length} document{documents.length === 1 ? "" : "s"} indexed in ChromaDB for Azure OpenAI RAG
+            {filteredDocs.length} of {documents.length} document{documents.length === 1 ? "" : "s"} indexed in ChromaDB
           </p>
+        </div>
+
+        {/* Search & Filter Toolbar */}
+        <div className="doc-list-toolbar">
+          <div className="search-input-box">
+            <Search size={15} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search documents by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button className="clear-search-btn" onClick={() => setSearchTerm("")}>
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          <div className="filter-chips">
+            <button
+              className={`filter-chip ${filterType === "all" ? "active" : ""}`}
+              onClick={() => setFilterType("all")}
+            >
+              All
+            </button>
+            <button
+              className={`filter-chip ${filterType === "pdf" ? "active" : ""}`}
+              onClick={() => setFilterType("pdf")}
+            >
+              PDF
+            </button>
+            <button
+              className={`filter-chip ${filterType === "word" ? "active" : ""}`}
+              onClick={() => setFilterType("word")}
+            >
+              Word
+            </button>
+            <button
+              className={`filter-chip ${filterType === "spreadsheet" ? "active" : ""}`}
+              onClick={() => setFilterType("spreadsheet")}
+            >
+              Sheets/CSV
+            </button>
+            <button
+              className={`filter-chip ${filterType === "code" ? "active" : ""}`}
+              onClick={() => setFilterType("code")}
+            >
+              Data/JSON
+            </button>
+          </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="loading-state">Loading documents...</div>
+        <div className="loading-state">
+          <Loader2 size={24} className="spin" style={{ margin: "0 auto 10px" }} />
+          <span>Refreshing document repository...</span>
+        </div>
       ) : documents.length === 0 ? (
         <div className="empty-state">
           <FileText size={48} className="empty-icon" />
           <p>No documents uploaded yet.</p>
           <span>Upload your first document above (PDF, DOCX, TXT, Excel, CSV, JSON) to get started!</span>
         </div>
+      ) : filteredDocs.length === 0 ? (
+        <div className="empty-filter-state">
+          <p>No documents matched your filter "{searchTerm || filterType}".</p>
+          <button className="btn-secondary" onClick={() => { setSearchTerm(""); setFilterType("all"); }}>
+            Clear Filters
+          </button>
+        </div>
       ) : (
         <div className="doc-grid">
-          {documents.map((doc) => (
+          {filteredDocs.map((doc) => (
             <div key={doc.id} className="doc-card">
               <div className="doc-card-top">
                 <span className={`file-badge ${doc.file_type.toLowerCase()}`}>
@@ -132,7 +258,7 @@ export default function DocumentList({
                   </button>
                   <button
                     className="icon-action-btn"
-                    title="Download file"
+                    title="Download original file"
                     onClick={() => handleDownload(doc.id)}
                   >
                     <Download size={15} />
@@ -177,7 +303,7 @@ export default function DocumentList({
 
               <div className="doc-meta">
                 <span>
-                  <Layers size={14} /> {doc.page_count} {doc.page_count === 1 ? "section/page" : "pages"}
+                  <Layers size={14} /> {doc.page_count} {doc.page_count === 1 ? "page" : "pages"}
                 </span>
                 <span>{(doc.file_size / 1024).toFixed(1)} KB</span>
                 <span>
