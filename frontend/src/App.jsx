@@ -34,8 +34,31 @@ function Dashboard() {
     }
   }, [user]);
 
+  // Live browser tab title synchronization
+  useEffect(() => {
+    if (!user) {
+      document.title = "Sign In — DocuMind RAG";
+      return;
+    }
+    if (activeTab === "chat") {
+      const selectedDoc = documents.find((d) => d.id === selectedDocId);
+      if (selectedDoc) {
+        document.title = `💬 QA: ${selectedDoc.original_name} — DocuMind RAG`;
+      } else {
+        document.title = "💬 Multi-Doc RAG Chat — DocuMind RAG";
+      }
+    } else {
+      document.title = `📁 Knowledge Base (${documents.length}) — DocuMind RAG`;
+    }
+  }, [user, activeTab, selectedDocId, documents]);
+
   if (authLoading) {
-    return <div className="app-loading">Loading application...</div>;
+    return (
+      <div className="app-loading-screen">
+        <div className="loading-spinner-large"></div>
+        <p>Initializing DocuMind RAG Intelligence Engine...</p>
+      </div>
+    );
   }
 
   if (!user) {
@@ -49,7 +72,11 @@ function Dashboard() {
 
   return (
     <div className="app-container">
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        docCount={documents.length}
+      />
 
       <main className="main-content">
         {activeTab === "documents" ? (

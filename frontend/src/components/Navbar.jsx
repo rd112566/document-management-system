@@ -4,7 +4,7 @@ import { BookOpen, LogOut, User, Sparkles, Settings, Zap } from "lucide-react";
 import AzureConfigModal from "./AzureConfigModal";
 import api from "../services/api";
 
-export default function Navbar({ activeTab, setActiveTab }) {
+export default function Navbar({ activeTab, setActiveTab, docCount = 0 }) {
   const { user, logout } = useAuth();
   const [isAzureModalOpen, setIsAzureModalOpen] = useState(false);
   const [azureConfig, setAzureConfig] = useState(null);
@@ -23,17 +23,22 @@ export default function Navbar({ activeTab, setActiveTab }) {
     fetchAzureStatus();
   }, [user]);
 
+  const userInitials = user?.username ? user.username.slice(0, 2).toUpperCase() : "U";
+
   return (
     <>
       <header className="navbar">
         <div className="navbar-container">
           <div className="brand" onClick={() => setActiveTab("documents")}>
             <div className="brand-icon">
-              <BookOpen size={24} color="#ffffff" />
+              <BookOpen size={22} color="#ffffff" />
             </div>
             <div className="brand-text">
-              <span className="brand-title">DocuMind RAG</span>
-              <span className="brand-subtitle">Document Intelligence &amp; QA</span>
+              <div className="brand-title-row">
+                <span className="brand-title">DocuMind RAG</span>
+                <span className="brand-live-pill">v2.0 • Live</span>
+              </div>
+              <span className="brand-subtitle">Azure OpenAI Document Intelligence</span>
             </div>
           </div>
 
@@ -42,43 +47,45 @@ export default function Navbar({ activeTab, setActiveTab }) {
               className={`nav-btn ${activeTab === "documents" ? "active" : ""}`}
               onClick={() => setActiveTab("documents")}
             >
-              Documents
+              <span>Documents</span>
+              {typeof docCount === "number" && docCount > 0 && (
+                <span className="nav-count-badge">{docCount}</span>
+              )}
             </button>
             <button
               className={`nav-btn ${activeTab === "chat" ? "active" : ""}`}
               onClick={() => setActiveTab("chat")}
             >
-              <Sparkles size={16} style={{ marginRight: 6 }} />
-              RAG Chat
+              <Sparkles size={15} style={{ marginRight: 6 }} />
+              <span>RAG Chat</span>
             </button>
           </nav>
 
           <div className="nav-right">
-            {/* Azure OpenAI Status Pill */}
+            {/* Azure OpenAI Live Status Pill */}
             <button
               className={`azure-status-pill ${
                 azureConfig?.is_configured ? "connected" : "unconfigured"
               }`}
               onClick={() => setIsAzureModalOpen(true)}
-              title="Click to configure Azure OpenAI deployment"
+              title="Click to view or update Azure OpenAI configuration"
             >
+              <span className="status-dot"></span>
               <Zap size={14} />
               <span>
                 {azureConfig?.is_configured
                   ? `Azure: ${azureConfig.deployment_name}`
-                  : "Azure OpenAI Setup"}
+                  : "Connect Azure OpenAI"}
               </span>
-              <span className="status-dot"></span>
             </button>
 
             <div className="nav-user">
-              <div className="user-badge">
-                <User size={16} />
-                <span className="username">{user?.username}</span>
+              <div className="user-avatar-circle" title={`Logged in as ${user?.username}`}>
+                {userInitials}
               </div>
+              <span className="user-display-name">{user?.username}</span>
               <button className="logout-btn" onClick={logout} title="Sign Out">
-                <LogOut size={16} />
-                <span>Logout</span>
+                <LogOut size={15} />
               </button>
             </div>
           </div>
