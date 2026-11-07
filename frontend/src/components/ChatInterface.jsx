@@ -11,7 +11,9 @@ import {
   ChevronUp,
   FileText,
   Loader2,
-  ExternalLink,
+  Copy,
+  Check,
+  Zap,
 } from "lucide-react";
 
 export default function ChatInterface({
@@ -23,6 +25,7 @@ export default function ChatInterface({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [expandedCitations, setExpandedCitations] = useState({});
+  const [copiedId, setCopiedId] = useState(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -48,7 +51,7 @@ export default function ChatInterface({
   };
 
   const clearHistory = async () => {
-    if (window.confirm("Clear conversation history?")) {
+    if (window.confirm("Clear conversation history for this scope?")) {
       try {
         const params = selectedDocId ? { document_id: selectedDocId } : {};
         await api.delete("/api/chat/history", { params });
@@ -97,6 +100,7 @@ export default function ChatInterface({
                 ...m,
                 answer: `⚠️ Error: ${detail}`,
                 citations: [],
+                model_used: "Error",
               }
             : m
         )
@@ -114,11 +118,55 @@ export default function ChatInterface({
     }));
   };
 
-  const suggestedQueries = [
-    "What are the main topics discussed?",
-    "Summarize the key requirements or conclusions.",
-    "Are there any specific dates, numbers, or deadlines mentioned?",
-  ];
+  const copyToClipboard = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const getSuggestedQueries = () => {
+    if (!selectedDocId) {
+      return [
+        "What are the main topics and objectives discussed in the uploaded documents?",
+        "Summarize the key requirements, policies, or conclusions.",
+        "Are there any specific dates, numbers, figures, or deadlines mentioned?",
+      ];
+    }
+    const currentDoc = documents.find((d) => d.id === selectedDocId);
+    const docName = currentDoc?.original_name?.toLowerCase() || "";
+
+    if (docName.includes("quantum")) {
+      return [
+        "What did Google Quantum AI demonstrate in 2019?",
+        "What speedup does Grover's algorithm provide?",
+        "What is Shor's algorithm used for?",
+        "How many physical qubits are needed per logical qubit?",
+      ];
+    }
+    if (docName.includes("policy") || docName.includes("governance")) {
+      return [
+        "What encryption standard is required by the AI policy?",
+        "How long can authentication tokens last before expiring?",
+        "Does the policy allow cross-tenant data access?",
+        "Summarize the security and compliance requirements.",
+      ];
+    }
+    if (docName.includes("requirement") || docName.includes("project")) {
+      return [
+        "What are the three main deliverables of the project?",
+        "What is the project budget and deadline?",
+        "What vector store is specified in the requirements?",
+        "What file formats must the document extraction support?",
+      ];
+    }
+    return [
+      `Summarize the key takeaways of ${currentDoc?.original_name || "this document"}.`,
+      "What are the most important conclusions or recommendations?",
+      "List all specific metrics, numbers, and dates mentioned.",
+    ];
+  };
+
+  const suggestedQueries = getSuggestedQueries();
 
   return (
     <div className="chat-container">
@@ -132,10 +180,10 @@ export default function ChatInterface({
               setSelectedDocId(e.target.value ? Number(e.target.value) : null)
             }
           >
-            <option value="">🌐 All Documents (Multi-doc RAG)</option>
+            <option value="">🌐 All Uploaded Documents (Multi-doc RAG)</option>
             {documents.map((d) => (
               <option key={d.id} value={d.id}>
-                📄 {d.original_name} ({d.page_count}p)
+                📄 {d.original_name} ({d.page_count} {d.page_count === 1 ? "page" : "pages"})
               </option>
             ))}
           </select>
@@ -156,19 +204,17 @@ export default function ChatInterface({
             <div className="chat-empty-icon">
               <Bot size={44} />
             </div>
-            <h3>Ask anything about your documents</h3>
+            <h3>Ask questions about your uploaded documents</h3>
             <p>
-              I will search your vector embeddings and generate an accurate answer
-              strictly backed by page-level citations.
+              The system queries ChromaDB vector embeddings and uses <strong>Azure OpenAI GPT models</strong> to
+              extract and synthesize answers with precise page-level citations.
             </p>
             <div className="suggestions-list">
               {suggestedQueries.map((query, i) => (
                 <button
                   key={i}
                   className="suggestion-chip"
-                  onClick={() => {
-                    setInput(query);
-                  }}
+                  onClick={() => setInput(query)}
                 >
                   <Sparkles size={14} />
                   <span>{query}</span>
@@ -198,21 +244,44 @@ export default function ChatInterface({
                   {msg.answer === null ? (
                     <div className="generating-loader">
                       <Loader2 size={18} className="spin" />
-                      <span>Retrieving chunks & generating answer...</span>
+                      <span>Fetching document context &amp; querying Azure OpenAI GPT...</span>
                     </div>
                   ) : (
                     <>
                       <div className="bot-msg-meta">
-                        <span className="model-tag">⚡ {msg.model_used || "gpt-5.6-luna (Azure OpenAI)"}</span>
+                        <span className="model-tag">
+                          <Zap size={13} style={{ marginRight: 4 }} />
+                          {msg.model_used || "gpt-4o (Azure OpenAI)"}
+                        </span>
+                        <button
+                          className="copy-btn"
+                          onClick={() => copyToClipboard(msg.answer, msg.id)}
+                          title="Copy answer"
+                        >
+                          {copiedId === msg.id ? (
+                            <>
+                              <Check size={13} color="#10b981" />
+                              <span style={{ color: "#10b981" }}>Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={13} />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
                       </div>
-                      <p className="answer-text">{msg.answer}</p>
+
+                      <div className="answer-text">
+                        <p style={{ whiteSpace: "pre-wrap" }}>{msg.answer}</p>
+                      </div>
 
                       {/* Citations Box */}
                       {msg.citations && msg.citations.length > 0 && (
                         <div className="citations-box">
                           <div className="citations-header">
                             <BookOpen size={14} />
-                            <span>Sources & Citations:</span>
+                            <span>Sources &amp; Citations:</span>
                           </div>
                           <div className="citations-list">
                             {msg.citations.map((cite, idx) => {
@@ -231,7 +300,7 @@ export default function ChatInterface({
                                       Page {cite.page}
                                     </span>
                                     {cite.snippet && (
-                                      <button className="expand-btn">
+                                      <button className="expand-btn" type="button">
                                         {isExp ? (
                                           <ChevronUp size={14} />
                                         ) : (
@@ -268,7 +337,7 @@ export default function ChatInterface({
           placeholder={
             selectedDocId
               ? "Ask a question about the selected document..."
-              : "Ask across all uploaded documents..."
+              : "Ask a question across all uploaded documents..."
           }
           value={input}
           onChange={(e) => setInput(e.target.value)}

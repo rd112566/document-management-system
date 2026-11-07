@@ -11,6 +11,8 @@ import {
   X,
   Layers,
   Calendar,
+  Eye,
+  Loader2,
 } from "lucide-react";
 
 export default function DocumentList({
@@ -21,8 +23,14 @@ export default function DocumentList({
 }) {
   const [editingId, setEditingId] = useState(null);
   const [newName, setNewName] = useState("");
+  
+  // Summary modal state
   const [summaryData, setSummaryData] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // Chunks preview modal state
+  const [chunksData, setChunksData] = useState(null);
+  const [chunksLoading, setChunksLoading] = useState(false);
 
   const startRename = (doc) => {
     setEditingId(doc.id);
@@ -41,7 +49,11 @@ export default function DocumentList({
   };
 
   const handleDelete = async (id, name) => {
-    if (window.confirm(`Are you sure you want to delete "${name}"? This removes all vector embeddings and chunks.`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${name}"? This removes the file and all vector embeddings from ChromaDB.`
+      )
+    ) {
       try {
         await api.delete(`/api/documents/${id}`);
         onRefresh();
@@ -58,7 +70,7 @@ export default function DocumentList({
 
   const handleGenerateSummary = async (id, name) => {
     setSummaryLoading(true);
-    setSummaryData({ name, text: "Analyzing document chunks..." });
+    setSummaryData({ name, text: "Generating summary using Azure OpenAI GPT..." });
     try {
       const res = await api.post(`/api/documents/${id}/summary`);
       setSummaryData({ name, text: res.data.summary });
@@ -69,12 +81,28 @@ export default function DocumentList({
     }
   };
 
+  const handleViewChunks = async (id, name) => {
+    setChunksLoading(true);
+    setChunksData({ name, chunks: [] });
+    try {
+      const res = await api.get(`/api/documents/${id}/chunks`);
+      setChunksData({ name, chunks: res.data.chunks, total: res.data.total_chunks });
+    } catch (err) {
+      alert("Failed to load document chunks");
+      setChunksData(null);
+    } finally {
+      setChunksLoading(false);
+    }
+  };
+
   return (
     <div className="doc-list-container">
       <div className="doc-list-header">
         <div>
           <h3>My Knowledge Base</h3>
-          <p>{documents.length} document{documents.length === 1 ? "" : "s"} indexed in ChromaDB</p>
+          <p>
+            {documents.length} document{documents.length === 1 ? "" : "s"} indexed in ChromaDB for Azure OpenAI RAG
+          </p>
         </div>
       </div>
 
@@ -84,37 +112,44 @@ export default function DocumentList({
         <div className="empty-state">
           <FileText size={48} className="empty-icon" />
           <p>No documents uploaded yet.</p>
-          <span>Upload your first PDF, DOCX, or TXT file above to get started!</span>
+          <span>Upload your first document above (PDF, DOCX, TXT, Excel, CSV, JSON) to get started!</span>
         </div>
       ) : (
         <div className="doc-grid">
           {documents.map((doc) => (
             <div key={doc.id} className="doc-card">
               <div className="doc-card-top">
-                <span className={`file-badge ${doc.file_type}`}>
+                <span className={`file-badge ${doc.file_type.toLowerCase()}`}>
                   {doc.file_type.toUpperCase()}
                 </span>
                 <div className="doc-card-actions">
                   <button
                     className="icon-action-btn"
+                    title="Inspect extracted chunks"
+                    onClick={() => handleViewChunks(doc.id, doc.original_name)}
+                  >
+                    <Eye size={15} />
+                  </button>
+                  <button
+                    className="icon-action-btn"
                     title="Download file"
                     onClick={() => handleDownload(doc.id)}
                   >
-                    <Download size={16} />
+                    <Download size={15} />
                   </button>
                   <button
                     className="icon-action-btn"
                     title="Rename"
                     onClick={() => startRename(doc)}
                   >
-                    <Edit2 size={16} />
+                    <Edit2 size={15} />
                   </button>
                   <button
                     className="icon-action-btn delete"
                     title="Delete document & vectors"
                     onClick={() => handleDelete(doc.id, doc.original_name)}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
@@ -142,7 +177,7 @@ export default function DocumentList({
 
               <div className="doc-meta">
                 <span>
-                  <Layers size={14} /> {doc.page_count} page{doc.page_count === 1 ? "" : "s"}
+                  <Layers size={14} /> {doc.page_count} {doc.page_count === 1 ? "section/page" : "pages"}
                 </span>
                 <span>{(doc.file_size / 1024).toFixed(1)} KB</span>
                 <span>
@@ -178,23 +213,75 @@ export default function DocumentList({
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Sparkles size={20} color="#6366f1" />
-                <h3>Document Summary</h3>
+                <h3>Azure OpenAI Executive Summary</h3>
               </div>
               <button className="close-btn" onClick={() => setSummaryData(null)}>
                 <X size={20} />
               </button>
             </div>
-            <p className="modal-sub">Summary for: <strong>{summaryData.name}</strong></p>
+            <p className="modal-sub">
+              Document: <strong>{summaryData.name}</strong>
+            </p>
             <div className="modal-content">
               {summaryLoading ? (
-                <p>Generating intelligent summary...</p>
+                <div className="modal-loading">
+                  <Loader2 className="spin" size={20} />
+                  <span>Synthesizing document with Azure OpenAI...</span>
+                </div>
               ) : (
-                <p className="summary-text">{summaryData.text}</p>
+                <div className="summary-markdown">
+                  <p style={{ whiteSpace: "pre-wrap" }}>{summaryData.text}</p>
+                </div>
               )}
             </div>
             <div className="modal-footer">
               <button className="btn-primary" onClick={() => setSummaryData(null)}>
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Extracted Chunks Inspection Modal */}
+      {chunksData && (
+        <div className="modal-overlay" onClick={() => setChunksData(null)}>
+          <div className="modal-box chunks-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Eye size={20} color="#3b82f6" />
+                <h3>Extracted Text Chunks &amp; Index</h3>
+              </div>
+              <button className="close-btn" onClick={() => setChunksData(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <p className="modal-sub">
+              Document: <strong>{chunksData.name}</strong> ({chunksData.total || 0} chunks in vector index)
+            </p>
+            <div className="modal-content chunks-list">
+              {chunksLoading ? (
+                <div className="modal-loading">
+                  <Loader2 className="spin" size={20} />
+                  <span>Loading extracted chunks...</span>
+                </div>
+              ) : chunksData.chunks?.length === 0 ? (
+                <p>No chunks found for this document.</p>
+              ) : (
+                chunksData.chunks.map((c, i) => (
+                  <div key={i} className="chunk-card">
+                    <div className="chunk-header">
+                      <span className="chunk-badge">Page {c.page}</span>
+                      <span className="chunk-index">Chunk #{c.chunk_index}</span>
+                    </div>
+                    <p className="chunk-text">{c.text}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-primary" onClick={() => setChunksData(null)}>
+                Close
               </button>
             </div>
           </div>

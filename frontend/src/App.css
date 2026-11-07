@@ -404,6 +404,26 @@ body {
   color: #475569;
 }
 
+.file-badge.md, .file-badge.markdown {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.file-badge.csv, .file-badge.tsv {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.file-badge.xlsx, .file-badge.xls {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.file-badge.json {
+  background: #fae8ff;
+  color: #a21caf;
+}
+
 .doc-card-actions {
   display: flex;
   gap: 4px;
@@ -1061,3 +1081,270 @@ body {
   display: flex;
   justify-content: flex-end;
 }
+
+/* ---------------- AZURE OPENAI STATUS PILL ---------------- */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.azure-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.azure-status-pill.connected {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.azure-status-pill.connected:hover {
+  background: #dbeafe;
+}
+
+.azure-status-pill.unconfigured {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.azure-status-pill.unconfigured:hover {
+  background: #fef3c7;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.azure-status-pill.connected .status-dot {
+  background-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.azure-status-pill.unconfigured .status-dot {
+  background-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+/* ---------------- AZURE CONFIG MODAL ---------------- */
+.azure-modal {
+  max-width: 650px;
+}
+
+.azure-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.azure-modal-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.azure-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.field-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.icon-toggle-btn {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.azure-test-banner {
+  padding: 12px 14px;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.azure-test-banner.success {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.azure-test-banner.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.test-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.azure-save-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.azure-save-banner.loading {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.azure-save-banner.success {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.azure-save-banner.error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.azure-footer {
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.test-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.test-btn:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+/* ---------------- CHUNKS PREVIEW MODAL ---------------- */
+.chunks-modal {
+  max-width: 800px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.chunks-list {
+  max-height: 55vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 6px;
+}
+
+.chunk-card {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.chunk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.chunk-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #e0e7ff;
+  color: #4338ca;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.chunk-index {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.chunk-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #334155;
+  white-space: pre-wrap;
+}
+
+/* ---------------- COPY BUTTON ---------------- */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: auto;
+}
+
+.copy-btn:hover {
+  background: #f1f5f9;
+  color: var(--text-main);
+}
+

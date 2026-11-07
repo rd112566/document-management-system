@@ -1,6 +1,16 @@
 import React, { useState } from "react";
 import api from "../services/api";
-import { UploadCloud, CheckCircle, AlertTriangle, FileText, Loader2 } from "lucide-react";
+import {
+  UploadCloud,
+  CheckCircle,
+  AlertTriangle,
+  FileText,
+  Loader2,
+  FileSpreadsheet,
+  FileCode,
+} from "lucide-react";
+
+const SUPPORTED_EXTS = ["pdf", "docx", "doc", "txt", "md", "markdown", "csv", "tsv", "xlsx", "xls", "json"];
 
 export default function DocumentUpload({ onUploadSuccess }) {
   const [file, setFile] = useState(null);
@@ -12,10 +22,10 @@ export default function DocumentUpload({ onUploadSuccess }) {
     if (e.target.files && e.target.files[0]) {
       const selected = e.target.files[0];
       const ext = selected.name.split(".").pop().toLowerCase();
-      if (!["pdf", "docx", "doc", "txt"].includes(ext)) {
+      if (!SUPPORTED_EXTS.includes(ext)) {
         setStatusMsg({
           type: "error",
-          text: "Invalid file format. Please upload PDF, DOCX, or TXT documents.",
+          text: `Unsupported format ('.${ext}'). Please upload PDF, Word (DOCX), Text, Markdown, Excel, CSV, or JSON documents.`,
         });
         setFile(null);
         return;
@@ -30,7 +40,10 @@ export default function DocumentUpload({ onUploadSuccess }) {
 
     setUploading(true);
     setProgress(15);
-    setStatusMsg({ type: "info", text: "Uploading and processing text with OCR & metadata..." });
+    setStatusMsg({
+      type: "info",
+      text: "Uploading document, extracting text & generating vector embeddings in ChromaDB...",
+    });
 
     const formData = new FormData();
     formData.append("file", file);
@@ -41,15 +54,17 @@ export default function DocumentUpload({ onUploadSuccess }) {
           "Content-Type": "multipart/form-data",
         },
         onUploadProgress: (progressEvent) => {
-          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setProgress(Math.min(percent, 85));
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setProgress(Math.min(percent, 85));
+          }
         },
       });
 
       setProgress(100);
       setStatusMsg({
         type: "success",
-        text: `"${res.data.original_name}" uploaded & indexed (${res.data.chunks_indexed} chunks created)!`,
+        text: `"${res.data.original_name}" uploaded and indexed successfully (${res.data.chunks_indexed} chunks created)!`,
       });
       setFile(null);
       if (onUploadSuccess) onUploadSuccess();
@@ -57,19 +72,32 @@ export default function DocumentUpload({ onUploadSuccess }) {
       const detail =
         err.response?.data?.detail ||
         (err.response?.status === 401
-          ? "You are not logged in on the live site. Please sign up or log in first."
-          : "Upload failed. The server might be waking up; please try again in a few seconds.");
+          ? "You are not logged in. Please sign up or log in first."
+          : "Upload failed. Please ensure the backend server is running and try again.");
       setStatusMsg({ type: "error", text: detail });
     } finally {
       setUploading(false);
     }
   };
 
+  const getFileIcon = (filename) => {
+    const ext = filename?.split(".").pop().toLowerCase();
+    if (["xlsx", "xls", "csv", "tsv"].includes(ext)) {
+      return <FileSpreadsheet size={38} className="file-icon" color="#10b981" />;
+    }
+    if (["json", "md"].includes(ext)) {
+      return <FileCode size={38} className="file-icon" color="#f59e0b" />;
+    }
+    return <FileText size={38} className="file-icon" color="#6366f1" />;
+  };
+
   return (
     <div className="upload-card">
       <div className="upload-header">
-        <h3>Upload Document</h3>
-        <p>Supports PDF (PyMuPDF & OCR), DOCX, and TXT files</p>
+        <h3>Upload Documents</h3>
+        <p>
+          Extract text and index into ChromaDB for Q&amp;A retrieval with Azure OpenAI GPT models
+        </p>
       </div>
 
       <div
@@ -79,14 +107,14 @@ export default function DocumentUpload({ onUploadSuccess }) {
         <input
           id="file-input"
           type="file"
-          accept=".pdf,.docx,.doc,.txt"
+          accept=".pdf,.docx,.doc,.txt,.md,.markdown,.csv,.tsv,.xlsx,.xls,.json"
           onChange={handleFileChange}
           style={{ display: "none" }}
         />
 
         {file ? (
           <div className="selected-file-preview">
-            <FileText size={38} className="file-icon" />
+            {getFileIcon(file.name)}
             <div className="file-info">
               <span className="file-name">{file.name}</span>
               <span className="file-size">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
@@ -95,8 +123,10 @@ export default function DocumentUpload({ onUploadSuccess }) {
         ) : (
           <div className="dropzone-content">
             <UploadCloud size={44} className="upload-icon" />
-            <p className="primary-text">Click or drag & drop to choose a document</p>
-            <p className="sub-text">PDF, DOCX, or TXT up to 50MB</p>
+            <p className="primary-text">Click or drag &amp; drop to upload a document</p>
+            <p className="sub-text">
+              Supports <strong>PDF, Word (DOCX), Text, Markdown, Excel, CSV, JSON</strong> (up to 50MB)
+            </p>
           </div>
         )}
       </div>
@@ -125,7 +155,7 @@ export default function DocumentUpload({ onUploadSuccess }) {
           onClick={handleUpload}
           disabled={!file || uploading}
         >
-          {uploading ? "Extracting & Indexing..." : "Process & Embed Document"}
+          {uploading ? "Extracting & Indexing..." : "Process & Index Document"}
         </button>
       </div>
     </div>
