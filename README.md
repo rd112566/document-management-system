@@ -49,8 +49,11 @@ AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
 AZURE_OPENAI_API_VERSION=2024-08-01-preview
 ```
 
-### 2. Start the Backend
-Double-click `run_backend.bat` or run in PowerShell:
+### 2. Start Both Services (1-Click)
+Double-click `start_all.bat` in the root folder, or start them individually:
+
+**Option A: Backend Only**
+Double-click `run_backend.bat` or run:
 ```powershell
 cd backend
 .\venv\Scripts\Activate.ps1
@@ -59,13 +62,25 @@ python -m uvicorn main:app --reload --port 8000
 - API Root: `http://127.0.0.1:8000/`
 - Interactive Swagger UI: `http://127.0.0.1:8000/docs`
 
-### 3. Start the Frontend
-Double-click `run_frontend.bat` or run in PowerShell:
+**Option B: Frontend Only**
+Double-click `run_frontend.bat` or run:
 ```powershell
 cd frontend
 npm run dev
 ```
 - Web Application: `http://localhost:5173/`
+
+---
+
+## 📖 Prompts & Benchmarks Catalog
+
+See [`PROMPTS.md`](PROMPTS.md) for the complete prompt engineering documentation:
+- Grounded System Prompt & Citation syntax (`[Document: <name>, Page <num>]`)
+- Context Injection Template
+- Executive Summarization Prompt
+- Azure OpenAI Connectivity Ping
+- 20-Question Multi-Domain Benchmark Test Suite
+- Azure Reasoning Model (`gpt-5.6-luna`) parameter compatibility notes (`max_completion_tokens`)
 
 ---
 
