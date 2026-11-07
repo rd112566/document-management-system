@@ -14,3 +14,5 @@ frontend/dist/
 
 # Environment secrets
 .env
+backend/.env
+*.env
